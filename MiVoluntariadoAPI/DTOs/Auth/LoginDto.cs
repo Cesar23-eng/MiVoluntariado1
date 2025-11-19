@@ -1,6 +1,10 @@
-﻿namespace MiVoluntariadoAPI.DTOs.Auth;
+﻿using System.ComponentModel.DataAnnotations;
 
-public class LoginDto
+namespace MiVoluntariadoAPI.DTOs.Auth
 {
-    
+    public class LoginDto
+    {
+        [Required] public required string Email { get; set; }
+        [Required] public required string Password { get; set; }
+    }
 }
