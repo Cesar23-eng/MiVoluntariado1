@@ -1,0 +1,6 @@
+@MiVoluntariadoAPI_HostAddress = http://localhost:5182
+
+GET {{MiVoluntariadoAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
