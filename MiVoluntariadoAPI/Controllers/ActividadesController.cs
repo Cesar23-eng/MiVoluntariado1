@@ -14,7 +14,8 @@ namespace MiVoluntariadoAPI.Controllers
         private readonly AppDbContext _context;
         public ActividadesController(AppDbContext context) => _context = context;
 
-        [Authorize(Roles = "Empresa")]
+        // POST: /api/empresas/{id}/actividades - Permitido a Empresa y Admin
+        [Authorize(Roles = "Empresa,Admin")]
         [HttpPost("/api/empresas/{id}/actividades")]
         public async Task<ActionResult<ActividadDto>> CreateActividad(int id, ActividadDto actividadDto)
         {
@@ -43,8 +44,8 @@ namespace MiVoluntariadoAPI.Controllers
             return Ok(actividadDto);
         }
 
-        // PUT: api/actividades/{id}
-        [Authorize(Roles = "Empresa")]
+        // PUT: api/actividades/{id} - Permitido a Empresa y Admin
+        [Authorize(Roles = "Empresa,Admin")]
         [HttpPut("{id}")]
         public async Task<ActionResult> UpdateActividad(int id, UpdateActividadDto dto)
         {
@@ -62,7 +63,7 @@ namespace MiVoluntariadoAPI.Controllers
             return NoContent();
         }
 
-        // DELETE: api/actividades/{id}
+        // DELETE: api/actividades/{id} - Permitido a Empresa y Admin (Ya estaba correcto)
         [Authorize(Roles = "Empresa,Admin")]
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteActividad(int id)
@@ -95,5 +96,7 @@ namespace MiVoluntariadoAPI.Controllers
                 })
                 .ToListAsync();
         }
+        
+        // GET: api/actividades/{id} - Ya estaba abierto para consulta.
     }
 }
