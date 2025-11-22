@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MiVoluntariadoAPI.Data;
 using MiVoluntariadoAPI.DTOs.Core;
 using MiVoluntariadoAPI.Entities;
+using System.Security.Claims;
 
 namespace MiVoluntariadoAPI.Controllers
 {
@@ -16,21 +17,33 @@ namespace MiVoluntariadoAPI.Controllers
         public CertificadosController(AppDbContext context) => _context = context;
 
         // =========================================================================
-        // 1. POST /api/certificados/generar (GENERAR CERTIFICADO)
-        //
+        // 1. POST /api/certificados/generar (GENERAR CERTIFICADO) - CORREGIDO
+        // Ahora acepta GenerarCertificadoDto como entrada
         // =========================================================================
         [Authorize(Roles = "Empresa,Admin")]
         [HttpPost("generar")]
-        public async Task<ActionResult<CertificadoDto>> GenerarCertificado(CertificadoDto dto)
+        public async Task<ActionResult<CertificadoDto>> GenerarCertificado(GenerarCertificadoDto dto)
         {
-            // Nota: En una implementación real, aquí se verificaría que el UsuarioId, 
-            // EmpresaId y ActividadId vengan correctamente en el DTO o se extraigan de la lógica de negocio.
-
+            // 1. BUSCAR ACTIVIDAD para obtener el EmpresaId
+            var actividad = await _context.Actividades.FindAsync(dto.ActividadId);
+            if (actividad == null)
+            {
+                return NotFound($"Actividad con ID {dto.ActividadId} no encontrada.");
+            }
+            
+            // 2. Opcional: Validar que el usuario (Voluntario) exista
+            var usuario = await _context.Usuarios.FindAsync(dto.UsuarioId);
+            if (usuario == null)
+            {
+                return NotFound($"Usuario con ID {dto.UsuarioId} no encontrado.");
+            }
+            
+            // 3. CREAR ENTIDAD CERTIFICADO con los IDs obtenidos/enviados
             var certificado = new Certificado
             {
-                UsuarioId = 1, // <--- REEMPLAZAR con datos reales
-                EmpresaId = 1, // <--- REEMPLAZAR con datos reales
-                ActividadId = 1, // <--- REEMPLAZAR con datos reales
+                UsuarioId = dto.UsuarioId,              // Asignación correcta
+                ActividadId = dto.ActividadId,          // Asignación correcta
+                EmpresaId = actividad.EmpresaId,        // Obtenido de la Actividad
                 HorasCertificadas = dto.HorasCertificadas,
                 UrlCertificadoPDF = "https://fake-url.com/pdf",
                 FechaEmision = DateTime.UtcNow
@@ -39,7 +52,7 @@ namespace MiVoluntariadoAPI.Controllers
             _context.Certificados.Add(certificado);
             await _context.SaveChangesAsync();
 
-            // Retorna el DTO con información completa de las entidades relacionadas
+            // 4. Retornar el DTO de salida con datos completos
             var certificadoCompleto = await _context.Certificados
                 .Include(c => c.Usuario)
                 .Include(c => c.Empresa)
@@ -59,8 +72,7 @@ namespace MiVoluntariadoAPI.Controllers
         }
 
         // =========================================================================
-        // 2. GET /api/certificados/usuario/{id} (CONSULTAR POR USUARIO - getCertificadosByUsuario)
-        //
+        // 2. GET /api/certificados/usuario/{id} (CONSULTAR POR USUARIO)
         // =========================================================================
         [HttpGet("usuario/{id}")]
         public async Task<ActionResult<IEnumerable<CertificadoDto>>> GetCertificadosUsuario(int id)
@@ -89,7 +101,6 @@ namespace MiVoluntariadoAPI.Controllers
 
         // =========================================================================
         // 3. GET /api/certificados (LISTAR TODOS - Solo Admin)
-        //
         // =========================================================================
         [Authorize(Roles = "Admin")]
         [HttpGet]
