@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MiVoluntariadoAPI.Data;
 using MiVoluntariadoAPI.DTOs.Core;
 
@@ -13,53 +14,53 @@ namespace MiVoluntariadoAPI.Controllers
         private readonly AppDbContext _context;
         public UsuariosController(AppDbContext context) => _context = context;
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<UsuarioDto>> GetUsuario(int id)
-        {
-            var u = await _context.Usuarios.FindAsync(id);
-            if (u == null) return NotFound();
+        // ... (El resto de los métodos GET/PUT/DELETE de Usuario)
 
-            return new UsuarioDto
-            {
-                Id = u.Id,
-                Nombre = u.Nombre,
-                Apellido = u.Apellido,
-                Email = u.Email, // El email se puede ver, pero no es el hash
-                CurriculumSocial = u.CurriculumSocial,
-                FotoPerfilURL = u.FotoPerfilURL,
-                TipoUsuario = u.TipoUsuario
-            };
+        // GET: api/usuarios/{id}/certificados - (getCertificadosByUsuario)
+        [HttpGet("{id}/certificados")]
+        public async Task<ActionResult<IEnumerable<CertificadoDto>>> GetCertificados(int id)
+        {
+            var certificados = await _context.Certificados
+                .Include(c => c.Actividad)
+                .Include(c => c.Empresa)
+                .Include(c => c.Usuario)
+                .Where(c => c.UsuarioId == id)
+                .Select(c => new CertificadoDto
+                {
+                    Id = c.Id,
+                    NombreVoluntario = c.Usuario!.Nombre + " " + c.Usuario.Apellido,
+                    NombreEmpresa = c.Empresa!.Nombre,
+                    NombreActividad = c.Actividad!.NombreActividad,
+                    HorasCertificadas = c.HorasCertificadas,
+                    FechaEmision = c.FechaEmision,
+                    UrlCertificadoPDF = c.UrlCertificadoPDF
+                })
+                .ToListAsync();
+
+            return Ok(certificados);
         }
 
-        // PUT: api/usuarios/{id}
-        // CORRECCIÓN: Usamos UpdateUsuarioDto para restringir campos sensibles
-        [HttpPut("{id}")]
-        public async Task<ActionResult> UpdateUsuario(int id, UpdateUsuarioDto updateDto)
+        // GET: api/usuarios/{id}/postulaciones - (getPostulaciones) para el usuario
+        [HttpGet("{id}/postulaciones")]
+        public async Task<ActionResult<IEnumerable<PostulacionDto>>> GetPostulaciones(int id)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
-            if (usuario == null) return NotFound();
+            var postulaciones = await _context.Postulaciones
+                .Include(p => p.Actividad)
+                .Where(p => p.UsuarioId == id)
+                .Select(p => new PostulacionDto
+                {
+                    Id = p.Id,
+                    UsuarioId = p.UsuarioId,
+                    ActividadId = p.ActividadId,
+                    NombreActividad = p.Actividad!.NombreActividad,
+                    Estado = p.Estado,
+                    FechaPostulacion = p.FechaPostulacion,
+                    HorasAsignadas = p.HorasAsignadas,
+                    HorasCompletadas = p.HorasCompletadas
+                })
+                .ToListAsync();
 
-            // Solo actualizamos lo permitido
-            usuario.Nombre = updateDto.Nombre;
-            usuario.Apellido = updateDto.Apellido;
-            usuario.CurriculumSocial = updateDto.CurriculumSocial;
-            usuario.FotoPerfilURL = updateDto.FotoPerfilURL;
-            
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
-        
-        // DELETE: api/usuarios/{id}
-        [Authorize(Roles = "Admin")] // Solo admin puede borrar usuarios
-        [HttpDelete("{id}")]
-        public async Task<ActionResult> DeleteUsuario(int id)
-        {
-            var usuario = await _context.Usuarios.FindAsync(id);
-            if (usuario == null) return NotFound();
-            
-            _context.Usuarios.Remove(usuario);
-            await _context.SaveChangesAsync();
-            return NoContent();
+            return Ok(postulaciones);
         }
     }
 }

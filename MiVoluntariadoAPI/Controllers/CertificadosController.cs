@@ -15,17 +15,22 @@ namespace MiVoluntariadoAPI.Controllers
 
         public CertificadosController(AppDbContext context) => _context = context;
 
-        // POST: api/certificados/generar - Permitido a Empresa y Admin (Ya estaba correcto)
+        // =========================================================================
+        // 1. POST /api/certificados/generar (GENERAR CERTIFICADO)
+        //
+        // =========================================================================
         [Authorize(Roles = "Empresa,Admin")]
         [HttpPost("generar")]
         public async Task<ActionResult<CertificadoDto>> GenerarCertificado(CertificadoDto dto)
         {
-            // ... (Lógica de creación de certificado sigue igual)
+            // Nota: En una implementación real, aquí se verificaría que el UsuarioId, 
+            // EmpresaId y ActividadId vengan correctamente en el DTO o se extraigan de la lógica de negocio.
+
             var certificado = new Certificado
             {
-                UsuarioId = 1, // <--- DEBES PASAR ESTO DESDE EL FRONT
-                EmpresaId = 1, // <--- DEBES PASAR ESTO DESDE EL FRONT
-                ActividadId = 1, // <--- DEBES PASAR ESTO DESDE EL FRONT
+                UsuarioId = 1, // <--- REEMPLAZAR con datos reales
+                EmpresaId = 1, // <--- REEMPLAZAR con datos reales
+                ActividadId = 1, // <--- REEMPLAZAR con datos reales
                 HorasCertificadas = dto.HorasCertificadas,
                 UrlCertificadoPDF = "https://fake-url.com/pdf",
                 FechaEmision = DateTime.UtcNow
@@ -34,6 +39,7 @@ namespace MiVoluntariadoAPI.Controllers
             _context.Certificados.Add(certificado);
             await _context.SaveChangesAsync();
 
+            // Retorna el DTO con información completa de las entidades relacionadas
             var certificadoCompleto = await _context.Certificados
                 .Include(c => c.Usuario)
                 .Include(c => c.Empresa)
@@ -52,11 +58,13 @@ namespace MiVoluntariadoAPI.Controllers
             });
         }
 
-        // GET: api/certificados/usuario/{id} - Permite a cualquier usuario consultar sus propios certificados
+        // =========================================================================
+        // 2. GET /api/certificados/usuario/{id} (CONSULTAR POR USUARIO - getCertificadosByUsuario)
+        //
+        // =========================================================================
         [HttpGet("usuario/{id}")]
         public async Task<ActionResult<IEnumerable<CertificadoDto>>> GetCertificadosUsuario(int id)
         {
-            // ... (Lógica de consulta sigue igual)
             var certs = await _context.Certificados
                 .Include(c => c.Empresa)
                 .Include(c => c.Actividad)
@@ -74,10 +82,15 @@ namespace MiVoluntariadoAPI.Controllers
                 })
                 .ToListAsync();
 
+            if (!certs.Any()) return NotFound("No se encontraron certificados para este usuario.");
+
             return Ok(certs);
         }
-        
-        // NUEVO ENDPOINT: GET: api/certificados - Listar todos los certificados (Solo Admin)
+
+        // =========================================================================
+        // 3. GET /api/certificados (LISTAR TODOS - Solo Admin)
+        //
+        // =========================================================================
         [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CertificadoDto>>> GetAllCertificados()
